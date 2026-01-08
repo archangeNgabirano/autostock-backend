@@ -1,0 +1,7 @@
+package com.autostock_backend.autostock_backend.domain.enums;
+
+public enum ActionStock {
+    CREATE,
+    UPDATE,
+    DELETE
+}
