@@ -3,7 +3,9 @@ package com.autostock_backend.autostock_backend.domain.entity;
 import java.time.LocalDateTime;
 
 import com.autostock_backend.autostock_backend.domain.enums.ActionStock;
+import com.autostock_backend.autostock_backend.domain.enums.TypeMouvement;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -26,19 +28,35 @@ public class StockAudit {
     private Long idAudit;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "idStock", nullable = false)
-    private Stock stock;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idUtilisateur", nullable = false)
     private Utilisateur utilisateur;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idStock", nullable = false)
+    private Stock stock;
+
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ActionStock action;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TypeMouvement typeMouvement;
 
     private Double quantiteAvant;
     private Double quantiteApres;
 
+    //snapshot des prix au moment du mouvement
+    private Double prixAchatAvant;
+    private Double prixAchatApres;
+
+    private Double prixVenteAvant;
+    private Double prixVenteApres;
+
+   
+
+
+    @Column(nullable = false)
     private LocalDateTime dateAction;
 }
 

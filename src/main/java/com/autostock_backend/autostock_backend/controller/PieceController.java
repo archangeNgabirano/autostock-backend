@@ -1,4 +1,4 @@
-package com.autostock_backend.autostock_backend.controller.PieceController;
+package com.autostock_backend.autostock_backend.controller;
 
 import java.util.List;
 
@@ -16,29 +16,21 @@ import org.springframework.web.bind.annotation.RestController;
 import com.autostock_backend.autostock_backend.domain.entity.Piece;
 import com.autostock_backend.autostock_backend.service.PieceService;
 
-import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/pieces")
-@RequiredArgsConstructor
 @CrossOrigin("*")
 public class PieceController {
 
     private final PieceService pieceService;
 
+    public PieceController(PieceService pieceService) {
+        this.pieceService = pieceService;
+    }
+
     @PostMapping
     public ResponseEntity<Piece> create(@RequestBody Piece piece) {
         return ResponseEntity.ok(pieceService.create(piece));
-    }
-
-    @GetMapping
-    public ResponseEntity<List<Piece>> getAll() {
-        return ResponseEntity.ok(pieceService.getAll());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Piece> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(pieceService.getById(id));
     }
 
     @PutMapping("/{id}")
@@ -48,10 +40,27 @@ public class PieceController {
         return ResponseEntity.ok(pieceService.update(id, piece));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Piece> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(pieceService.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Piece>> getAll() {
+        return ResponseEntity.ok(pieceService.getAll());
+    }
+
+    @GetMapping("/sous-categorie/{idSousCategorie}")
+    public ResponseEntity<List<Piece>> getBySousCategorie(
+            @PathVariable Long idSousCategorie) {
+        return ResponseEntity.ok(
+            pieceService.getBySousCategorie(idSousCategorie)
+        );
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         pieceService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
-

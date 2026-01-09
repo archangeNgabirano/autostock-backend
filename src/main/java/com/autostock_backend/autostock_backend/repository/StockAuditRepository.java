@@ -9,4 +9,5 @@ import com.autostock_backend.autostock_backend.domain.entity.StockAudit;
 public interface StockAuditRepository extends JpaRepository<StockAudit, Long> {
 
     List<StockAudit> findByStockIdStockOrderByDateActionDesc(Long idStock);
+
 }

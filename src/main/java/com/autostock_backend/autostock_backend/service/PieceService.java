@@ -4,94 +4,101 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.autostock_backend.autostock_backend.domain.entity.NumeroPiece;
 import com.autostock_backend.autostock_backend.domain.entity.Piece;
-import com.autostock_backend.autostock_backend.domain.entity.SousCategorie;
-import com.autostock_backend.autostock_backend.repository.NumeroPieceRepository;
 import com.autostock_backend.autostock_backend.repository.PieceRepository;
-import com.autostock_backend.autostock_backend.repository.SousCategorieRepository;
 
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class PieceService {
 
     private final PieceRepository pieceRepository;
-    private final SousCategorieRepository sousCategorieRepository;
-    private final NumeroPieceRepository numeroPieceRepository;
 
-    /* CREATE */
+    /* ================= CREATE ================= */
     public Piece create(Piece piece) {
 
-        // Sous catégorie obligatoire
-        SousCategorie sousCategorie = sousCategorieRepository
-                .findById(piece.getIdSousCategorie())
-                .orElseThrow(() -> new RuntimeException("Sous catégorie introuvable"));
-        piece.setSousCategorie(sousCategorie);
-
-        // Numero piece optionnel
-        if (piece.getNumeroPiece() != null &&
-            piece.getIdNumeroPiece() != null) {
-
-            NumeroPiece numeroPiece = numeroPieceRepository
-                    .findById(piece.getIdNumeroPiece())
-                    .orElseThrow(() -> new RuntimeException("Numero pièce introuvable"));
-
-            piece.setNumeroPiece(numeroPiece);
-        } else {
-            piece.setNumeroPiece(null);
+        if (piece.getNom() == null || piece.getNom().isBlank()) {
+            throw new IllegalArgumentException("Le nom de la pièce est obligatoire");
         }
+
+        boolean exists = pieceRepository
+                .existsByNomIgnoreCaseAndIdCategorieAndIdSousCategorie(
+                        piece.getNom().trim(),
+                        piece.getIdCategorie(),
+                        piece.getIdSousCategorie()
+                );
+
+        if (exists) {
+            throw new IllegalArgumentException(
+                    "Une pièce avec ce nom existe déjà dans cette catégorie et sous-catégorie"
+            );
+        }
+
+        piece.setNom(piece.getNom().trim());
+        piece.setActif(true);
 
         return pieceRepository.save(piece);
     }
 
-    /* READ */
-    public List<Piece> getAll() {
-        return pieceRepository.findAll();
-    }
-
-    public Piece getById(Long id) {
-        return pieceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Pièce introuvable"));
-    }
-
-    /* UPDATE */
+    /* ================= UPDATE ================= */
     public Piece update(Long id, Piece pieceRequest) {
 
-        Piece piece = getById(id);
+        Piece existing = getById(id);
 
-        piece.setNom(pieceRequest.getNom());
-        piece.setDescription(pieceRequest.getDescription());
-        piece.setPrixAchat(pieceRequest.getPrixAchat());
-        piece.setPrixVente(pieceRequest.getPrixVente());
-        piece.setActif(pieceRequest.getActif());
+        boolean exists = pieceRepository
+                .existsByNomIgnoreCaseAndIdCategorieAndIdSousCategorie(
+                        pieceRequest.getNom().trim(),
+                        pieceRequest.getIdCategorie(),
+                        pieceRequest.getIdSousCategorie()
+                );
 
-        // Sous catégorie obligatoire
-        SousCategorie sousCategorie = sousCategorieRepository
-                .findById(pieceRequest.getIdSousCategorie())
-                .orElseThrow(() -> new RuntimeException("Sous catégorie introuvable"));
-        piece.setSousCategorie(sousCategorie);
+        boolean samePiece =
+                existing.getNom().equalsIgnoreCase(pieceRequest.getNom())
+                && existing.getIdCategorie().equals(pieceRequest.getIdCategorie())
+                && existing.getIdSousCategorie().equals(pieceRequest.getIdSousCategorie());
 
-        // Numero piece optionnel
-        if (pieceRequest.getNumeroPiece() != null &&
-            pieceRequest.getIdNumeroPiece() != null) {
-
-            NumeroPiece numeroPiece = numeroPieceRepository
-                    .findById(pieceRequest.getIdNumeroPiece())
-                    .orElseThrow(() -> new RuntimeException("Numero pièce introuvable"));
-            piece.setNumeroPiece(numeroPiece);
-        } else {
-            piece.setNumeroPiece(null);
+        if (exists && !samePiece) {
+            throw new IllegalArgumentException(
+                    "Une autre pièce avec ce nom existe déjà dans cette catégorie et sous-catégorie"
+            );
         }
 
-        return pieceRepository.save(piece);
+        existing.setNom(pieceRequest.getNom().trim());
+        existing.setDescription(pieceRequest.getDescription());
+        existing.setPrixAchat(pieceRequest.getPrixAchat());
+        existing.setPrixVente(pieceRequest.getPrixVente());
+        existing.setIdCategorie(pieceRequest.getIdCategorie());
+        existing.setIdSousCategorie(pieceRequest.getIdSousCategorie());
+        existing.setActif(pieceRequest.getActif());
+
+        return pieceRepository.save(existing);
     }
 
-    /* DELETE (soft delete) */
+    /* ================= READ ================= */
+    public Piece getById(Long id) {
+        return pieceRepository.findById(id)
+                .orElseThrow(() ->
+                        new EntityNotFoundException("Pièce introuvable")
+                );
+    }
+
+    public List<Piece> getAll() {
+        return pieceRepository.findByActifTrue();
+    }
+
+    public List<Piece> getBySousCategorie(Long idSousCategorie) {
+        return pieceRepository.findByIdSousCategorieAndActifTrue(idSousCategorie);
+    }
+
+    /* ================= DELETE (SOFT) ================= */
     public void delete(Long id) {
         Piece piece = getById(id);
         piece.setActif(false);
         pieceRepository.save(piece);
     }
 }
+

@@ -33,8 +33,12 @@ public class Stock {
     @JoinColumn(name = "idEntrepot", nullable = false)
     private Entrepot entrepot;
 
-    private Double quantiteActuelle;
+    private Double quantiteActuelle = 0.0;
+
     private Double stockMin;
+
+    // 🔑 Prix réel du stock courant (dernier lot)
+    private Double prixAchat;
 
     private Boolean actif = true;
 
@@ -49,4 +53,3 @@ public class Stock {
     private LocalDateTime dateCreation;
     private LocalDateTime dateModification;
 }
-

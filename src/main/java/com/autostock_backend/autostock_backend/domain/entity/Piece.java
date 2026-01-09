@@ -1,6 +1,7 @@
 package com.autostock_backend.autostock_backend.domain.entity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,25 +22,21 @@ public class Piece {
     private String nom;
     private String description;
 
+    // Prix par défaut (optionnel)
     private Double prixAchat;
     private Double prixVente;
 
     private Boolean actif = true;
 
-    // Obligatoire
-    @ManyToOne
-    @JoinColumn(name = "idCategorie", nullable = false,insertable = false, updatable = false)
-    private SousCategorie Categorie;
+    // Relations
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idCategorie", nullable = false, insertable = false, updatable = false)
+    private Categorie categorie;
     private Long idCategorie;
-     @ManyToOne
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idSousCategorie", nullable = false, insertable = false, updatable = false)
     private SousCategorie sousCategorie;
     private Long idSousCategorie;
-
-    // Optionnelle
-    @ManyToOne
-    @JoinColumn(name = "idNumeroPiece",insertable = false, updatable = false)
-    private NumeroPiece numeroPiece;
-    private Long idNumeroPiece;
-
 }
+

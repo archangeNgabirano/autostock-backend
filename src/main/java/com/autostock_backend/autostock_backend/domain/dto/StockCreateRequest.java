@@ -1,18 +1,23 @@
 package com.autostock_backend.autostock_backend.domain.dto;
 
+
+
+
 import lombok.Data;
 
 @Data
-public class StockRequestDTO {
+public class StockCreateRequest {
 
-    private Long idPiece;
+     private Long idPiece;
     private Long idEntrepot;
+
     private Double quantite;
     private Double stockMin;
-    private Long idSousCategorie;
 
-    // OPTIONNEL
-    private Long idNumeroPiece;
-    // Optional: only for frontend-sent user
+    private Double prixAchat;      // obligatoire à l’entrée
+    private Double margePourcent;  // ex : 20
+
     private Long idUtilisateur;
 }
+
+

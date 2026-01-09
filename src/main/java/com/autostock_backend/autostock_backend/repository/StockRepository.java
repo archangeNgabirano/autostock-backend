@@ -15,7 +15,9 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
             Piece piece,
             Entrepot entrepot);
 
-Optional<Stock> findByPieceIdPieceAndEntrepotIdEntrepot(Long idPiece, Long idEntrepot);
+    Optional<Stock> findByPieceIdPieceAndEntrepotIdEntrepot(Long idPiece, Long idEntrepot);
 
     List<Stock> findByActifTrue();
+
+    
 }
