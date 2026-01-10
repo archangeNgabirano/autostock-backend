@@ -39,9 +39,9 @@ public class CategorieController {
     }
 
     // POST : créer une seule catégorie
-    @PostMapping
-    public Categorie creerCategorie(@RequestBody Categorie categorie) {
-        return categorieService.creerCategorie(categorie);
+     @PostMapping
+    public ResponseEntity<Categorie> create(@RequestBody Categorie categorie) {
+        return ResponseEntity.ok(categorieService.createCategorie(categorie));
     }
 
     // PUT : mettre à jour une catégorie

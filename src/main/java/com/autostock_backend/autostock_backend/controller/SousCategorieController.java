@@ -2,6 +2,7 @@ package com.autostock_backend.autostock_backend.controller;
 
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.autostock_backend.autostock_backend.domain.dto.SousCategorieCreateDto;
 import com.autostock_backend.autostock_backend.domain.entity.SousCategorie;
 import com.autostock_backend.autostock_backend.service.SousCategorieService;
 
@@ -31,15 +33,17 @@ public class SousCategorieController {
         return service.findAll();
     }
 
-    @PostMapping
-    public SousCategorie create(@RequestBody SousCategorie sc) {
-        return service.save(sc);
-    }
+   @PostMapping
+public ResponseEntity<SousCategorie> create(@RequestBody SousCategorieCreateDto dto) {
+    return ResponseEntity.ok(service.create(dto));
+}
 
-    @PutMapping("/{id}")
-    public SousCategorie update(@PathVariable Long id, @RequestBody SousCategorie sc) {
-        return service.update(id, sc);
-    }
+
+ @PutMapping("/{id}")
+public SousCategorie update(@PathVariable Long id, @RequestBody SousCategorieCreateDto dto) {
+    return service.updateSousCategorie(id, dto);
+}
+
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {

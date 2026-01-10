@@ -25,8 +25,7 @@ private Boolean actif = true;
 
 private Boolean avecNumeroPiece = false;
 @ManyToOne
-@JoinColumn(name = "idCategorie", updatable = false,insertable = false)
+@JoinColumn(name = "idCategorie", nullable = false)
 private Categorie categorie;
-private Long idCategorie;
 
 }

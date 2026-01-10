@@ -13,49 +13,47 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.autostock_backend.autostock_backend.domain.dto.PieceCreateUpdateDto;
+import com.autostock_backend.autostock_backend.domain.dto.PieceDto;
+import com.autostock_backend.autostock_backend.domain.dto.PieceMapper;
 import com.autostock_backend.autostock_backend.domain.entity.Piece;
 import com.autostock_backend.autostock_backend.service.PieceService;
+
+import lombok.RequiredArgsConstructor;
 
 
 @RestController
 @RequestMapping("/api/pieces")
+@RequiredArgsConstructor
 @CrossOrigin("*")
 public class PieceController {
 
     private final PieceService pieceService;
-
-    public PieceController(PieceService pieceService) {
-        this.pieceService = pieceService;
-    }
+    private final PieceMapper pieceMapper;
 
     @PostMapping
-    public ResponseEntity<Piece> create(@RequestBody Piece piece) {
-        return ResponseEntity.ok(pieceService.create(piece));
+    public ResponseEntity<PieceDto> create(
+            @RequestBody PieceCreateUpdateDto dto
+    ) {
+        Piece piece = pieceService.create(dto);
+        return ResponseEntity.ok(pieceMapper.toDto(piece));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Piece> update(
+    public ResponseEntity<PieceDto> update(
             @PathVariable Long id,
-            @RequestBody Piece piece) {
-        return ResponseEntity.ok(pieceService.update(id, piece));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Piece> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(pieceService.getById(id));
+            @RequestBody PieceCreateUpdateDto dto
+    ) {
+        Piece piece = pieceService.update(id, dto);
+        return ResponseEntity.ok(pieceMapper.toDto(piece));
     }
 
     @GetMapping
-    public ResponseEntity<List<Piece>> getAll() {
-        return ResponseEntity.ok(pieceService.getAll());
-    }
-
-    @GetMapping("/sous-categorie/{idSousCategorie}")
-    public ResponseEntity<List<Piece>> getBySousCategorie(
-            @PathVariable Long idSousCategorie) {
-        return ResponseEntity.ok(
-            pieceService.getBySousCategorie(idSousCategorie)
-        );
+    public List<PieceDto> getAll() {
+        return pieceService.getAll()
+                .stream()
+                .map(pieceMapper::toDto)
+                .toList();
     }
 
     @DeleteMapping("/{id}")

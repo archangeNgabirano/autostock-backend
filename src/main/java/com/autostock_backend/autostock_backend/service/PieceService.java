@@ -4,10 +4,14 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.autostock_backend.autostock_backend.Exception.ExceptionsPersonnalised.BadRequestException;
+import com.autostock_backend.autostock_backend.Exception.ExceptionsPersonnalised.NotFoundException;
+import com.autostock_backend.autostock_backend.domain.dto.PieceCreateUpdateDto;
 import com.autostock_backend.autostock_backend.domain.entity.Piece;
+import com.autostock_backend.autostock_backend.domain.entity.SousCategorie;
 import com.autostock_backend.autostock_backend.repository.PieceRepository;
+import com.autostock_backend.autostock_backend.repository.SousCategorieRepository;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
@@ -17,63 +21,88 @@ import lombok.RequiredArgsConstructor;
 public class PieceService {
 
     private final PieceRepository pieceRepository;
+    private final SousCategorieRepository sousCategorieRepository;
 
+  
     /* ================= CREATE ================= */
-    public Piece create(Piece piece) {
-
-        if (piece.getNom() == null || piece.getNom().isBlank()) {
-            throw new IllegalArgumentException("Le nom de la pièce est obligatoire");
+    public Piece create(PieceCreateUpdateDto dto) {
+        if (dto.getNom() == null || dto.getNom().isBlank()) {
+            throw new BadRequestException("Le nom de la pièce est obligatoire");
         }
 
+        // Vérifier doublon
         boolean exists = pieceRepository
                 .existsByNomIgnoreCaseAndIdCategorieAndIdSousCategorie(
-                        piece.getNom().trim(),
-                        piece.getIdCategorie(),
-                        piece.getIdSousCategorie()
+                        dto.getNom().trim(),
+                        dto.getIdCategorie(),
+                        dto.getIdSousCategorie()
                 );
 
         if (exists) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Une pièce avec ce nom existe déjà dans cette catégorie et sous-catégorie"
             );
         }
 
-        piece.setNom(piece.getNom().trim());
-        piece.setActif(true);
+        // Vérifier que la sous-catégorie existe
+        SousCategorie sousCategorie = sousCategorieRepository
+                .findById(dto.getIdSousCategorie())
+                .orElseThrow(() -> new NotFoundException("Sous-catégorie introuvable"));
+
+        // Créer la pièce
+        Piece piece = new Piece();
+        piece.setNom(dto.getNom().trim());
+        piece.setDescription(dto.getDescription());
+        piece.setPrixAchat(dto.getPrixAchat());
+        piece.setPrixVente(dto.getPrixVente());
+        piece.setActif(dto.getActif() != null ? dto.getActif() : true);
+
+        piece.setSousCategorie(sousCategorie);
+        piece.setIdSousCategorie(sousCategorie.getIdSousCategorie());
+        piece.setCategorie(sousCategorie.getCategorie());
+        piece.setIdCategorie(sousCategorie.getCategorie().getIdCategorie());
 
         return pieceRepository.save(piece);
     }
 
     /* ================= UPDATE ================= */
-    public Piece update(Long id, Piece pieceRequest) {
-
+    public Piece update(Long id, PieceCreateUpdateDto dto) {
         Piece existing = getById(id);
 
+        // Vérifier doublon
         boolean exists = pieceRepository
                 .existsByNomIgnoreCaseAndIdCategorieAndIdSousCategorie(
-                        pieceRequest.getNom().trim(),
-                        pieceRequest.getIdCategorie(),
-                        pieceRequest.getIdSousCategorie()
+                        dto.getNom().trim(),
+                        dto.getIdCategorie(),
+                        dto.getIdSousCategorie()
                 );
 
-        boolean samePiece =
-                existing.getNom().equalsIgnoreCase(pieceRequest.getNom())
-                && existing.getIdCategorie().equals(pieceRequest.getIdCategorie())
-                && existing.getIdSousCategorie().equals(pieceRequest.getIdSousCategorie());
+        boolean samePiece = existing.getNom().equalsIgnoreCase(dto.getNom())
+                && existing.getIdCategorie().equals(dto.getIdCategorie())
+                && existing.getIdSousCategorie().equals(dto.getIdSousCategorie());
 
         if (exists && !samePiece) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Une autre pièce avec ce nom existe déjà dans cette catégorie et sous-catégorie"
             );
         }
 
-        existing.setNom(pieceRequest.getNom().trim());
-        existing.setDescription(pieceRequest.getDescription());
-        existing.setPrixAchat(pieceRequest.getPrixAchat());
-        existing.setPrixVente(pieceRequest.getPrixVente());
-        existing.setIdCategorie(pieceRequest.getIdCategorie());
-        existing.setIdSousCategorie(pieceRequest.getIdSousCategorie());
-        existing.setActif(pieceRequest.getActif());
+        // Vérifier que la sous-catégorie existe
+        SousCategorie sousCategorie = sousCategorieRepository
+                .findById(dto.getIdSousCategorie())
+                .orElseThrow(() -> new NotFoundException("Sous-catégorie introuvable"));
+
+        // Mettre à jour
+        existing.setNom(dto.getNom().trim());
+        existing.setDescription(dto.getDescription());
+        existing.setPrixAchat(dto.getPrixAchat());
+        existing.setPrixVente(dto.getPrixVente());
+        existing.setActif(dto.getActif() != null ? dto.getActif() : true);
+
+        existing.setSousCategorie(sousCategorie);
+        existing.setIdSousCategorie(sousCategorie.getIdSousCategorie());
+        existing.setCategorie(sousCategorie.getCategorie());
+        existing.setIdCategorie(sousCategorie.getCategorie().getIdCategorie());
 
         return pieceRepository.save(existing);
     }
@@ -81,24 +110,21 @@ public class PieceService {
     /* ================= READ ================= */
     public Piece getById(Long id) {
         return pieceRepository.findById(id)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("Pièce introuvable")
-                );
+                .orElseThrow(() -> new NotFoundException("Pièce introuvable"));
     }
 
     public List<Piece> getAll() {
-        return pieceRepository.findByActifTrue();
+        return pieceRepository.findByActifTrue(); // récupérer seulement les actives
     }
 
-    public List<Piece> getBySousCategorie(Long idSousCategorie) {
-        return pieceRepository.findByIdSousCategorieAndActifTrue(idSousCategorie);
+    public List<Piece> getInactive() {
+        return pieceRepository.findByActifFalse(); // récupérer les inactives
     }
 
     /* ================= DELETE (SOFT) ================= */
     public void delete(Long id) {
-        Piece piece = getById(id);
-        piece.setActif(false);
-        pieceRepository.save(piece);
+        Piece existing = getById(id);
+        existing.setActif(false);
+        pieceRepository.save(existing);
     }
 }
-
