@@ -28,23 +28,12 @@ public class StockAudit {
     private Long idAudit;
 
     @ManyToOne(fetch = FetchType.LAZY)
-<<<<<<< HEAD
     @JoinColumn(name = "idUtilisateur", nullable = false)
     private Utilisateur utilisateur;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idStock", nullable = false)
     private Stock stock;
-=======
-    @JoinColumn(name = "idUtilisateur", insertable = false, updatable = false)
-    private Utilisateur utilisateur;
-    private Long idUtilisateur;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "idStock", insertable = false, updatable = false)
-    private Stock stock;
-    private Long idStock;
->>>>>>> 70bff4c (auto backen to test server)
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -57,7 +46,6 @@ public class StockAudit {
     private Double quantiteAvant;
     private Double quantiteApres;
 
-    // snapshot des prix au moment du mouvement
     private Double prixAchatAvant;
     private Double prixAchatApres;
 
@@ -65,23 +53,19 @@ public class StockAudit {
     private Double prixVenteApres;
 
     @ManyToOne(fetch = FetchType.LAZY)
-<<<<<<< HEAD
     @JoinColumn(name = "idEntrepotSource")
     private Entrepot entrepotSource;
-=======
-    @JoinColumn(name = "idEntrepotSource",insertable = false,updatable  = false)
-    private Entrepot entrepotSource;
-    private Long idEntrepotSource;
->>>>>>> 70bff4c (auto backen to test server)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idEntrepotDestination")
     private Entrepot entrepotDestination;
+
     @Column(length = 255)
-    private String motif; // casse, inventaire, vol, correction, transfert
+    private String motif;
 
     private Double margeAvant;
     private Double margeApres;
+
     @Column(length = 500)
     private String commentaire;
 

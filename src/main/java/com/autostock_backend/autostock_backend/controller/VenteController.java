@@ -9,8 +9,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.autostock_backend.autostock_backend.domain.dto.VenteCreateRequest;
+import com.autostock_backend.autostock_backend.domain.dto.VenteMapper;
+import com.autostock_backend.autostock_backend.domain.dto.VenteResponseDto;
 import com.autostock_backend.autostock_backend.domain.entity.Vente;
 import com.autostock_backend.autostock_backend.service.VenteService;
 
@@ -23,38 +27,43 @@ public class VenteController {
 
     private final VenteService venteService;
 
-    /* ===== CREER ===== */
+    // Créer une vente
     @PostMapping
-    public ResponseEntity<Vente> creer(@RequestBody Vente vente) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(venteService.creerVente(vente));
+    public ResponseEntity<VenteResponseDto> creerVente(@RequestBody VenteCreateRequest request) {
+        VenteResponseDto response = venteService.creerVente(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /* ===== ANNULER ===== */
-    // @PostMapping("/{id}/annuler")
-    // public ResponseEntity<Vente> annuler(
-    //         @PathVariable Long id,
-    //         @RequestParam String motif
-    // ) {
-    //     return ResponseEntity.ok(venteService.annulerVente(id, motif));
-    // }
+    // Annuler une vente
+    @PostMapping("/{id}/annuler")
+    public ResponseEntity<VenteResponseDto> annulerVente(
+            @PathVariable Long id,
+            @RequestParam String motif) {
 
-    /* ===== GET ALL ===== */
+        Vente vente = venteService.annulerVente(id, motif);
+        return ResponseEntity.ok(VenteMapper.toResponseDto(vente));
+    }
+
+    // Liste de toutes les ventes
     @GetMapping
-    public ResponseEntity<List<Vente>> getAll() {
-        return ResponseEntity.ok(venteService.getAll());
+    public ResponseEntity<List<VenteResponseDto>> getAllVentes() {
+        List<VenteResponseDto> ventes = venteService.getAll().stream()
+                .map(VenteMapper::toResponseDto)
+                .toList();
+        return ResponseEntity.ok(ventes);
     }
 
-    /* ===== GET BY ID ===== */
+    // Vente par ID
     @GetMapping("/{id}")
-    public ResponseEntity<Vente> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(venteService.getById(id));
+    public ResponseEntity<VenteResponseDto> getVenteById(@PathVariable Long id) {
+        Vente vente = venteService.getById(id);
+        return ResponseEntity.ok(VenteMapper.toResponseDto(vente));
     }
 
-    /* ===== GET BY NUMERO ===== */
+    // Vente par numéro
     @GetMapping("/numero/{numero}")
-    public ResponseEntity<Vente> getByNumero(@PathVariable String numero) {
-        return ResponseEntity.ok(venteService.getByNumero(numero));
+    public ResponseEntity<VenteResponseDto> getVenteByNumero(@PathVariable String numero) {
+        Vente vente = venteService.getByNumero(numero);
+        return ResponseEntity.ok(VenteMapper.toResponseDto(vente));
     }
 }

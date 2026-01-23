@@ -11,8 +11,6 @@ import lombok.Data;
 @Data
 @Table(name = "utilisateurs")
 public class Utilisateur {
-
-
 @Id
 @GeneratedValue(strategy = GenerationType.IDENTITY)
 private Long idUtilisateur;

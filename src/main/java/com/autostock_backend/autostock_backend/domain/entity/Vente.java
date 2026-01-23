@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.autostock_backend.autostock_backend.domain.enums.StatutVente;
+import com.autostock_backend.autostock_backend.domain.enums.TypeVente;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -17,12 +18,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
 
+@Data
 @Entity
 @Table(name = "ventes")
-@Data
 public class Vente {
 
     @Id
@@ -33,9 +35,8 @@ public class Vente {
     private String numeroVente;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "idClient", insertable = false, updatable = false)
-    private ClientEntity client; // optionnel
-    private Long idClient;
+    @JoinColumn(name = "idClient")
+    private ClientEntity client;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "idEntrepot", insertable = false, updatable = false)
@@ -53,8 +54,18 @@ public class Vente {
     private Double total;
 
     @Enumerated(EnumType.STRING)
-    private StatutVente statut;
+    private TypeVente typeVente;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatutVente statut; // <-- ADD THIS BACK
 
     @OneToMany(mappedBy = "vente", cascade = CascadeType.ALL)
     private List<LigneVente> lignes;
+
+    @OneToOne(mappedBy = "vente", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private Facture facture;
+
+    
 }
+

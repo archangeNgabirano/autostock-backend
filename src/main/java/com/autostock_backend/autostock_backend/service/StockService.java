@@ -55,108 +55,103 @@ public class StockService {
 
     // ================= APPROVISIONNEMENT =================
 
-    @Transactional
-    public Stock enregistrerApprovisionnement(StockCreateRequest request) {
+@Transactional
+public Stock enregistrerApprovisionnement(StockCreateRequest request) {
 
-        Utilisateur utilisateur = getUserFromDTO(request.getIdUtilisateur());
+    // ===================== Récupération de l'utilisateur =====================
+    Utilisateur utilisateur = utilisateurRepository.findById(request.getIdUtilisateur())
+            .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
 
-        // ===================== Récupération des entités =====================
-        Piece piece = pieceRepository.findById(request.getIdPiece())
-                .orElseThrow(() -> new RuntimeException("Pièce introuvable"));
+    // ===================== Récupération des entités =====================
+    Piece piece = pieceRepository.findById(request.getIdPiece())
+            .orElseThrow(() -> new RuntimeException("Pièce introuvable"));
 
-        Entrepot entrepot = entrepotRepository.findById(request.getIdEntrepot())
-                .orElseThrow(() -> new RuntimeException("Entrepôt introuvable"));
+    Entrepot entrepot = entrepotRepository.findById(request.getIdEntrepot())
+            .orElseThrow(() -> new RuntimeException("Entrepôt introuvable"));
 
-        // ===================== Vérification stock existant =====================
-        Optional<Stock> optionalStock = stockRepository
-                .findByPieceIdPieceAndEntrepotIdEntrepot(piece.getIdPiece(), entrepot.getIdEntrepot());
+    // ===================== Vérification stock existant =====================
+    Optional<Stock> optionalStock = stockRepository
+            .findByPieceIdPieceAndEntrepotIdEntrepot(piece.getIdPiece(), entrepot.getIdEntrepot());
 
-        Stock stock;
-        boolean isNewStock = false;
+    Stock stock;
+    boolean isNewStock = false;
 
-        if (optionalStock.isPresent()) {
-            // Stock existant → UPDATE
-            stock = optionalStock.get();
-        } else {
-            // Stock n'existe pas → CREATE
-            stock = new Stock();
-            stock.setPiece(piece);
-            stock.setEntrepot(entrepot);
-            stock.setQuantiteActuelle(0.0);
-            stock.setPrixAchat(request.getPrixAchat());
-            stock.setCreePar(utilisateur);
-            stock.setDateCreation(LocalDateTime.now());
-            stock.setStatus(calculerStatutStock(stock));
-            stock = stockRepository.saveAndFlush(stock);
-            isNewStock = true;
-        }
-
-        // ===================== Valeurs avant modification =====================
-        double quantiteAvant = stock.getQuantiteActuelle();
-        Double prixAchatStockAvant = stock.getPrixAchat();
-        Double prixAchatPieceAvant = piece.getPrixAchat();
-        Double prixVenteAvant = piece.getPrixVente();
-        Double margeAvant = piece.getMargePourcent();
-
-        // ===================== Quantité =====================
-        double quantiteApres = quantiteAvant + request.getQuantite();
-        stock.setQuantiteActuelle(quantiteApres);
-        stock.setStatus(calculerStatutStock(stock));
-
-        // ===================== Prix achat lot =====================
+    if (optionalStock.isPresent()) {
+        stock = optionalStock.get();
+    } else {
+        stock = new Stock();
+        stock.setPiece(piece);
+        stock.setEntrepot(entrepot);
+        stock.setQuantiteActuelle(0.0);
         stock.setPrixAchat(request.getPrixAchat());
-
-        // ===================== Prix achat moyen de la pièce =====================
-        double prixAchatMoyen;
-        if (quantiteAvant == 0 || prixAchatPieceAvant == null) {
-            prixAchatMoyen = request.getPrixAchat();
-        } else {
-            prixAchatMoyen = ((quantiteAvant * prixAchatPieceAvant)
-                    + (request.getQuantite() * request.getPrixAchat()))
-                    / quantiteApres;
-        }
-        piece.setPrixAchat(prixAchatMoyen);
-
-        // ===================== MARGE =====================
-        double marge = request.getMargePourcent() != null ? request.getMargePourcent() : 25.0;
-        piece.setMargePourcent(marge);
-
-        // ===================== Prix de vente =====================
-        double prixVenteCalcule = prixAchatMoyen * (1 + marge / 100);
-        piece.setPrixVente(prixVenteCalcule);
-
-        // ===================== Méta =====================
-        stock.setModifiePar(utilisateur);
-        stock.setDateModification(LocalDateTime.now());
-
-        // ===================== Sauvegarde =====================
-        pieceRepository.save(piece);
-        Stock savedStock = stockRepository.saveAndFlush(stock);
-
-        // ===================== Audit =====================
-        StockAudit audit = new StockAudit();
-        audit.setStock(savedStock);
-        audit.setUtilisateur(utilisateur);
-        audit.setAction(isNewStock ? ActionStock.CREATE : ActionStock.UPDATE);
-        audit.setTypeMouvement(TypeMouvement.ENTREE);
-
-        audit.setQuantiteAvant(quantiteAvant);
-        audit.setQuantiteApres(savedStock.getQuantiteActuelle());
-
-        audit.setPrixAchatAvant(prixAchatStockAvant);
-        audit.setPrixAchatApres(savedStock.getPrixAchat());
-
-        audit.setPrixVenteAvant(prixVenteAvant);
-        audit.setPrixVenteApres(piece.getPrixVente());
-
-        audit.setMargeAvant(margeAvant);
-        audit.setMargeApres(marge);
-
-        audit.setDateAction(LocalDateTime.now());
-        stockAuditRepository.save(audit);
-
-        return savedStock;
+        stock.setCreePar(utilisateur); // <-- utilisateur récupéré depuis DB
+        stock.setDateCreation(LocalDateTime.now());
+        stock.setStatus(calculerStatutStock(stock));
+        stock = stockRepository.saveAndFlush(stock);
+        isNewStock = true;
     }
+
+    // ===================== Valeurs avant modification =====================
+    double quantiteAvant = stock.getQuantiteActuelle();
+    Double prixAchatStockAvant = stock.getPrixAchat();
+    Double prixAchatPieceAvant = piece.getPrixAchat();
+    Double prixVenteAvant = piece.getPrixVente();
+    Double margeAvant = piece.getMargePourcent();
+
+    // ===================== Quantité =====================
+    double quantiteApres = quantiteAvant + request.getQuantite();
+    stock.setQuantiteActuelle(quantiteApres);
+    stock.setStatus(calculerStatutStock(stock));
+
+    // ===================== Prix achat lot =====================
+    stock.setPrixAchat(request.getPrixAchat());
+
+    // ===================== Prix achat moyen =====================
+    double prixAchatMoyen = (quantiteAvant == 0 || prixAchatPieceAvant == null)
+            ? request.getPrixAchat()
+            : ((quantiteAvant * prixAchatPieceAvant) + (request.getQuantite() * request.getPrixAchat()))
+            / quantiteApres;
+    piece.setPrixAchat(prixAchatMoyen);
+
+    // ===================== MARGE =====================
+    double marge = request.getMargePourcent() != null ? request.getMargePourcent() : 25.0;
+    piece.setMargePourcent(marge);
+
+    // ===================== Prix de vente =====================
+    piece.setPrixVente(prixAchatMoyen * (1 + marge / 100));
+
+    // ===================== Méta =====================
+    stock.setModifiePar(utilisateur); // utilisateur existant
+    stock.setDateModification(LocalDateTime.now());
+
+    // ===================== Sauvegarde =====================
+    pieceRepository.save(piece);
+    Stock savedStock = stockRepository.saveAndFlush(stock);
+
+    // ===================== Audit =====================
+// Audit
+StockAudit audit = new StockAudit();
+audit.setStock(savedStock);          // Hibernate va remplir id_stock
+audit.setUtilisateur(utilisateur);   // Hibernate va remplir id_utilisateur
+audit.setAction(isNewStock ? ActionStock.CREATE : ActionStock.UPDATE);
+audit.setTypeMouvement(TypeMouvement.ENTREE);
+audit.setQuantiteAvant(quantiteAvant);
+audit.setQuantiteApres(savedStock.getQuantiteActuelle());
+audit.setPrixAchatAvant(prixAchatStockAvant);
+audit.setPrixAchatApres(savedStock.getPrixAchat());
+audit.setPrixVenteAvant(prixVenteAvant);
+audit.setPrixVenteApres(piece.getPrixVente());
+audit.setMargeAvant(margeAvant);
+audit.setMargeApres(marge);
+audit.setDateAction(LocalDateTime.now());
+audit.setCommentaire(isNewStock ? "Création stock" : "Approvisionnement");
+
+stockAuditRepository.save(audit);
+
+
+    return savedStock;
+}
+
 
     // ================= AJUSTEMENT =================
     @Transactional
@@ -256,181 +251,177 @@ public class StockService {
         return savedStock;
     }
 
-   private void saveAuditTransfert(
-        Stock stock,
-        Utilisateur utilisateur,
-        double quantiteAvant,
-        double quantiteApres,
-        Entrepot entrepotSource,
-        Entrepot entrepotDestination,
-        TypeMouvement typeMouvement,
-        String commentaire) {
+    private void saveAuditTransfert(
+            Stock stock,
+            Utilisateur utilisateur,
+            double quantiteAvant,
+            double quantiteApres,
+            Entrepot entrepotSource,
+            Entrepot entrepotDestination,
+            TypeMouvement typeMouvement,
+            String commentaire) {
 
-    if (stock == null || stock.getPiece() == null) {
-        throw new IllegalStateException("Stock ou pièce null lors de l'audit de transfert");
+        if (stock == null || stock.getPiece() == null) {
+            throw new IllegalStateException("Stock ou pièce null lors de l'audit de transfert");
+        }
+
+        Piece piece = stock.getPiece();
+
+        StockAudit audit = new StockAudit();
+        audit.setStock(stock);
+        audit.setUtilisateur(utilisateur);
+
+        // 🔑 SÉMANTIQUE CLAIRE
+        audit.setAction(ActionStock.TRANSFERT);
+        audit.setTypeMouvement(typeMouvement); // SORTIE ou ENTREE
+
+        // ================= QUANTITÉ =================
+        audit.setQuantiteAvant(quantiteAvant);
+        audit.setQuantiteApres(quantiteApres);
+
+        // ================= PRIX ACHAT =================
+        // Pour un transfert → le prix ne change PAS
+        audit.setPrixAchatAvant(stock.getPrixAchat());
+        audit.setPrixAchatApres(stock.getPrixAchat());
+
+        // ================= PRIX VENTE =================
+        audit.setPrixVenteAvant(piece.getPrixVente());
+        audit.setPrixVenteApres(piece.getPrixVente());
+
+        // ================= MARGE =================
+        audit.setMargeAvant(piece.getMargePourcent());
+        audit.setMargeApres(piece.getMargePourcent());
+
+        // ================= ENTREPOTS =================
+        audit.setEntrepotSource(entrepotSource);
+        audit.setEntrepotDestination(entrepotDestination);
+
+        // ================= MÉTA =================
+        audit.setMotif("TRANSFERT DE STOCK");
+        audit.setCommentaire(
+                commentaire != null && !commentaire.isBlank()
+                        ? commentaire
+                        : (typeMouvement == TypeMouvement.SORTIE
+                                ? "Sortie de stock (transfert)"
+                                : "Entrée de stock (transfert)"));
+
+        audit.setDateAction(LocalDateTime.now());
+
+        // IMPORTANT : flush pour éviter perte silencieuse
+        stockAuditRepository.saveAndFlush(audit);
     }
-
-    Piece piece = stock.getPiece();
-
-    StockAudit audit = new StockAudit();
-    audit.setStock(stock);
-    audit.setUtilisateur(utilisateur);
-
-    // 🔑 SÉMANTIQUE CLAIRE
-    audit.setAction(ActionStock.TRANSFERT);
-    audit.setTypeMouvement(typeMouvement); // SORTIE ou ENTREE
-
-    // ================= QUANTITÉ =================
-    audit.setQuantiteAvant(quantiteAvant);
-    audit.setQuantiteApres(quantiteApres);
-
-    // ================= PRIX ACHAT =================
-    // Pour un transfert → le prix ne change PAS
-    audit.setPrixAchatAvant(stock.getPrixAchat());
-    audit.setPrixAchatApres(stock.getPrixAchat());
-
-    // ================= PRIX VENTE =================
-    audit.setPrixVenteAvant(piece.getPrixVente());
-    audit.setPrixVenteApres(piece.getPrixVente());
-
-    // ================= MARGE =================
-    audit.setMargeAvant(piece.getMargePourcent());
-    audit.setMargeApres(piece.getMargePourcent());
-
-    // ================= ENTREPOTS =================
-    audit.setEntrepotSource(entrepotSource);
-    audit.setEntrepotDestination(entrepotDestination);
-
-    // ================= MÉTA =================
-    audit.setMotif("TRANSFERT DE STOCK");
-    audit.setCommentaire(
-            commentaire != null && !commentaire.isBlank()
-                    ? commentaire
-                    : (typeMouvement == TypeMouvement.SORTIE
-                            ? "Sortie de stock (transfert)"
-                            : "Entrée de stock (transfert)")
-    );
-
-    audit.setDateAction(LocalDateTime.now());
-
-    // IMPORTANT : flush pour éviter perte silencieuse
-    stockAuditRepository.saveAndFlush(audit);
-}
 
     @Transactional
-public void transfererStock(StockTransfertRequest request) {
+    public void transfererStock(StockTransfertRequest request) {
 
-    // ================= VALIDATIONS =================
-    if (request.getIdPiece() == null) {
-        throw new BadRequestException("La pièce est obligatoire pour le transfert");
-    }
+        // ================= VALIDATIONS =================
+        if (request.getIdPiece() == null) {
+            throw new BadRequestException("La pièce est obligatoire pour le transfert");
+        }
 
-    if (request.getQuantite() == null || request.getQuantite() <= 0) {
-        throw new BadRequestException("La quantité transférée doit être strictement positive");
-    }
+        if (request.getQuantite() == null || request.getQuantite() <= 0) {
+            throw new BadRequestException("La quantité transférée doit être strictement positive");
+        }
 
-    if (request.getIdEntrepotSource() == null || request.getIdEntrepotDestination() == null) {
-        throw new BadRequestException("Les entrepôts source et destination sont obligatoires");
-    }
+        if (request.getIdEntrepotSource() == null || request.getIdEntrepotDestination() == null) {
+            throw new BadRequestException("Les entrepôts source et destination sont obligatoires");
+        }
 
-    if (request.getIdEntrepotSource().equals(request.getIdEntrepotDestination())) {
-        throw new BadRequestException("L'entrepôt source et destination doivent être différents");
-    }
+        if (request.getIdEntrepotSource().equals(request.getIdEntrepotDestination())) {
+            throw new BadRequestException("L'entrepôt source et destination doivent être différents");
+        }
 
-    if (request.getIdUtilisateur() == null) {
-        throw new BadRequestException("Utilisateur obligatoire pour le transfert");
-    }
+        if (request.getIdUtilisateur() == null) {
+            throw new BadRequestException("Utilisateur obligatoire pour le transfert");
+        }
 
-    double quantite = request.getQuantite();
-    Utilisateur utilisateur = getUserFromDTO(request.getIdUtilisateur());
+        double quantite = request.getQuantite();
+        Utilisateur utilisateur = getUserFromDTO(request.getIdUtilisateur());
 
-    // ================= ENTREPOT SOURCE =================
-    Entrepot entrepotSource = entrepotRepository.findById(request.getIdEntrepotSource())
-            .orElseThrow(() -> new NotFoundException("Entrepôt source introuvable"));
+        // ================= ENTREPOT SOURCE =================
+        Entrepot entrepotSource = entrepotRepository.findById(request.getIdEntrepotSource())
+                .orElseThrow(() -> new NotFoundException("Entrepôt source introuvable"));
 
-    // ================= ENTREPOT DESTINATION =================
-    Entrepot entrepotDestination = entrepotRepository.findById(request.getIdEntrepotDestination())
-            .orElseThrow(() -> new NotFoundException("Entrepôt destination introuvable"));
+        // ================= ENTREPOT DESTINATION =================
+        Entrepot entrepotDestination = entrepotRepository.findById(request.getIdEntrepotDestination())
+                .orElseThrow(() -> new NotFoundException("Entrepôt destination introuvable"));
 
-    // ================= STOCK SOURCE =================
-    Stock stockSource = stockRepository
-            .findByPieceIdPieceAndEntrepotIdEntrepot(
-                    request.getIdPiece(),
-                    request.getIdEntrepotSource())
-            .orElseThrow(() -> new NotFoundException("Stock source introuvable pour cette pièce"));
+        // ================= STOCK SOURCE =================
+        Stock stockSource = stockRepository
+                .findByPieceIdPieceAndEntrepotIdEntrepot(
+                        request.getIdPiece(),
+                        request.getIdEntrepotSource())
+                .orElseThrow(() -> new NotFoundException("Stock source introuvable pour cette pièce"));
 
-    if (stockSource.getQuantiteActuelle() < quantite) {
-        throw new BadRequestException(
-                "Stock insuffisant. Disponible : " + stockSource.getQuantiteActuelle());
-    }
+        if (stockSource.getQuantiteActuelle() < quantite) {
+            throw new BadRequestException(
+                    "Stock insuffisant. Disponible : " + stockSource.getQuantiteActuelle());
+        }
 
-    // ================= STOCK DESTINATION =================
-    Stock stockDestination = stockRepository
-            .findByPieceIdPieceAndEntrepotIdEntrepot(
-                    request.getIdPiece(),
-                    request.getIdEntrepotDestination())
-            .orElse(null);
+        // ================= STOCK DESTINATION =================
+        Stock stockDestination = stockRepository
+                .findByPieceIdPieceAndEntrepotIdEntrepot(
+                        request.getIdPiece(),
+                        request.getIdEntrepotDestination())
+                .orElse(null);
 
-    if (stockDestination == null) {
-        stockDestination = new Stock();
-        stockDestination.setPiece(stockSource.getPiece());
-        stockDestination.setEntrepot(entrepotDestination);
-        stockDestination.setQuantiteActuelle(0.0);
+        if (stockDestination == null) {
+            stockDestination = new Stock();
+            stockDestination.setPiece(stockSource.getPiece());
+            stockDestination.setEntrepot(entrepotDestination);
+            stockDestination.setQuantiteActuelle(0.0);
+            stockDestination.setPrixAchat(stockSource.getPrixAchat());
+            stockDestination.setStatus(StockStatus.OUT_OF_STOCK);
+            stockDestination.setCreePar(utilisateur);
+            stockDestination.setDateCreation(LocalDateTime.now());
+
+            // 🔥 IMPORTANT
+            stockDestination = stockRepository.saveAndFlush(stockDestination);
+        }
+
+        // ================= SORTIE (SOURCE) =================
+        double qteAvantSource = stockSource.getQuantiteActuelle();
+        double qteApresSource = qteAvantSource - quantite;
+
+        stockSource.setQuantiteActuelle(qteApresSource);
+        stockSource.setStatus(calculerStatutStock(stockSource));
+        stockSource.setModifiePar(utilisateur);
+        stockSource.setDateModification(LocalDateTime.now());
+
+        stockSource = stockRepository.saveAndFlush(stockSource);
+
+        saveAuditTransfert(
+                stockSource,
+                utilisateur,
+                qteAvantSource,
+                qteApresSource,
+                entrepotSource,
+                entrepotDestination,
+                TypeMouvement.SORTIE,
+                request.getCommentaire());
+
+        // ================= ENTREE (DESTINATION) =================
+        double qteAvantDest = stockDestination.getQuantiteActuelle();
+        double qteApresDest = qteAvantDest + quantite;
+
+        stockDestination.setQuantiteActuelle(qteApresDest);
         stockDestination.setPrixAchat(stockSource.getPrixAchat());
-        stockDestination.setStatus(StockStatus.OUT_OF_STOCK);
-        stockDestination.setCreePar(utilisateur);
-        stockDestination.setDateCreation(LocalDateTime.now());
+        stockDestination.setStatus(calculerStatutStock(stockDestination));
+        stockDestination.setModifiePar(utilisateur);
+        stockDestination.setDateModification(LocalDateTime.now());
 
-        // 🔥 IMPORTANT
         stockDestination = stockRepository.saveAndFlush(stockDestination);
+
+        saveAuditTransfert(
+                stockDestination,
+                utilisateur,
+                qteAvantDest,
+                qteApresDest,
+                entrepotSource,
+                entrepotDestination,
+                TypeMouvement.ENTREE,
+                request.getCommentaire());
     }
-
-    // ================= SORTIE (SOURCE) =================
-    double qteAvantSource = stockSource.getQuantiteActuelle();
-    double qteApresSource = qteAvantSource - quantite;
-
-    stockSource.setQuantiteActuelle(qteApresSource);
-    stockSource.setStatus(calculerStatutStock(stockSource));
-    stockSource.setModifiePar(utilisateur);
-    stockSource.setDateModification(LocalDateTime.now());
-
-    stockSource = stockRepository.saveAndFlush(stockSource);
-
-    saveAuditTransfert(
-            stockSource,
-            utilisateur,
-            qteAvantSource,
-            qteApresSource,
-            entrepotSource,
-            entrepotDestination,
-            TypeMouvement.SORTIE,
-            request.getCommentaire()
-    );
-
-    // ================= ENTREE (DESTINATION) =================
-    double qteAvantDest = stockDestination.getQuantiteActuelle();
-    double qteApresDest = qteAvantDest + quantite;
-
-    stockDestination.setQuantiteActuelle(qteApresDest);
-    stockDestination.setPrixAchat(stockSource.getPrixAchat());
-    stockDestination.setStatus(calculerStatutStock(stockDestination));
-    stockDestination.setModifiePar(utilisateur);
-    stockDestination.setDateModification(LocalDateTime.now());
-
-    stockDestination = stockRepository.saveAndFlush(stockDestination);
-
-    saveAuditTransfert(
-            stockDestination,
-            utilisateur,
-            qteAvantDest,
-            qteApresDest,
-            entrepotSource,
-            entrepotDestination,
-            TypeMouvement.ENTREE,
-            request.getCommentaire()
-    );
-}
-
 
     // ================= DESACTIVATION =================
     public void desactiverStock(Long idStock, Long idUtilisateur) {
