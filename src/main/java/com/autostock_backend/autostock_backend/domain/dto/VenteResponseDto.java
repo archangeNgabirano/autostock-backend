@@ -25,5 +25,5 @@ public class VenteResponseDto {
 
     private List<LigneVenteDto> lignes; // Liste des lignes de vente
 
-    private FactureDto facture; // ✅ Champ ajouté
+    private FactureDto facture; //Champ ajouté
 }

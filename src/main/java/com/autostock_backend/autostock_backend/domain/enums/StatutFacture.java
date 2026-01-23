@@ -4,6 +4,6 @@ public enum StatutFacture {
     PAYEE,
     ANNULEE,
     PARTIELLE,
-    IMPAYEE
+    NON_PAYEE
 }
 

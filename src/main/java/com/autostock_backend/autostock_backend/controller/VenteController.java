@@ -62,8 +62,7 @@ public class VenteController {
 
     // Vente par numéro
     @GetMapping("/numero/{numero}")
-    public ResponseEntity<VenteResponseDto> getVenteByNumero(@PathVariable String numero) {
-        Vente vente = venteService.getByNumero(numero);
-        return ResponseEntity.ok(VenteMapper.toResponseDto(vente));
+    public ResponseEntity<VenteResponseDto> getByNumero(@PathVariable String numero) {
+        return ResponseEntity.ok(venteService.getByNumero(numero));
     }
 }

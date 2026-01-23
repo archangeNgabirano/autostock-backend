@@ -2,98 +2,74 @@ package com.autostock_backend.autostock_backend.domain.dto;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.autostock_backend.autostock_backend.domain.entity.Facture;
-import com.autostock_backend.autostock_backend.domain.entity.LigneVente;
-import com.autostock_backend.autostock_backend.domain.entity.Paiement;
 import com.autostock_backend.autostock_backend.domain.entity.Vente;
 
 public class VenteMapper {
 
     public static VenteResponseDto toResponseDto(Vente vente) {
-
-        if (vente == null) {
-            return null;
-        }
+        if (vente == null) return null;
 
         VenteResponseDto dto = new VenteResponseDto();
-
-        // =======================
-        // INFORMATIONS DE BASE
-        // =======================
         dto.setIdVente(vente.getIdVente());
         dto.setNumeroVente(vente.getNumeroVente());
         dto.setDateVente(vente.getDateVente());
         dto.setTotal(vente.getTotal());
-        dto.setTypeVente(vente.getTypeVente());     // <-- FIXED
+        dto.setTypeVente(vente.getTypeVente());
         dto.setStatut(vente.getStatut());
-
-        dto.setIdClient(vente.getClient().getIdClient());
         dto.setIdEntrepot(vente.getIdEntrepot());
         dto.setIdUtilisateur(vente.getIdUtilisateur());
 
-        // =======================
-        // CLIENT (VENTE À CRÉDIT)
-        // =======================
-       if (vente.getClient() != null) {
-    ClientDto clientDto = new ClientDto();
-    clientDto.setIdClient(vente.getClient().getIdClient());
-    clientDto.setNom(vente.getClient().getNom());
-    clientDto.setTelephone(vente.getClient().getContact());
-    dto.setClient(clientDto);
-}
-
-        // =======================
-        // LIGNES DE VENTE
-        // =======================
-        List<LigneVenteDto> lignesDto = new ArrayList<>();
-
-        if (vente.getLignes() != null) {
-            for (LigneVente ligne : vente.getLignes()) {
-                LigneVenteDto l = new LigneVenteDto();
-                l.setIdLigne(ligne.getIdLigne());
-                l.setIdPiece(ligne.getIdPiece());
-                l.setQuantite(ligne.getQuantite());
-                l.setPrixVente(ligne.getPrixVente());
-                l.setTotalLigne(ligne.getTotalLigne());
-                lignesDto.add(l);
-            }
+        // Client info
+        if (vente.getClient() != null) {
+            ClientDto clientDto = new ClientDto();
+            clientDto.setIdClient(vente.getClient().getIdClient());
+            clientDto.setNom(vente.getClient().getNom());
+            clientDto.setTelephone(vente.getClient().getContact());
+            dto.setClient(clientDto);
         }
 
-        dto.setLignes(lignesDto); // <-- NEVER NULL
+        // Lignes
+        if (vente.getLignes() != null && !vente.getLignes().isEmpty()) {
+            List<LigneVenteDto> lignes = vente.getLignes().stream().map(l -> {
+                LigneVenteDto ligneDto = new LigneVenteDto();
+                ligneDto.setIdLigne(l.getIdLigne());
+                ligneDto.setIdPiece(l.getIdPiece());
+                ligneDto.setQuantite(l.getQuantite());
+                ligneDto.setPrixVente(l.getPrixVente());
+                ligneDto.setTotalLigne(l.getTotalLigne());
+                return ligneDto;
+            }).collect(Collectors.toList());
+            dto.setLignes(lignes);
+        }
 
-        // =======================
-        // FACTURE
-        // =======================
+        // Facture + paiements
         if (vente.getFacture() != null) {
-
             Facture facture = vente.getFacture();
             FactureDto factureDto = new FactureDto();
-
             factureDto.setIdFacture(facture.getIdFacture());
-            factureDto.setNumeroFacture(facture.getNumeroFacture()); // <-- FIXED
+            factureDto.setNumeroFacture(facture.getNumeroFacture());
             factureDto.setDateFacture(facture.getDateFacture());
             factureDto.setMontantTotal(facture.getMontantTotal());
             factureDto.setStatutFacture(facture.getStatutFacture());
             factureDto.setIdVente(vente.getIdVente());
 
-            // =======================
-            // PAIEMENTS
-            // =======================
-            List<PaiementDto> paiementsDto = new ArrayList<>();
-
-            if (facture.getPaiements() != null) {
-                for (Paiement p : facture.getPaiements()) {
+            if (facture.getPaiements() != null && !facture.getPaiements().isEmpty()) {
+                List<PaiementDto> paiements = facture.getPaiements().stream().map(p -> {
                     PaiementDto pDto = new PaiementDto();
                     pDto.setIdPaiement(p.getIdPaiement());
                     pDto.setMontant(p.getMontant());
                     pDto.setModePaiement(p.getModePaiement());
                     pDto.setDatePaiement(p.getDatePaiement());
-                    paiementsDto.add(pDto);
-                }
+                    return pDto;
+                }).collect(Collectors.toList());
+                factureDto.setPaiements(paiements);
+            } else {
+                factureDto.setPaiements(new ArrayList<>());
             }
 
-            factureDto.setPaiements(paiementsDto); // <-- NEVER NULL
             dto.setFacture(factureDto);
         }
 

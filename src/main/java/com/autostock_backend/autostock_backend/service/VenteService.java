@@ -49,19 +49,23 @@ public class VenteService {
     @Transactional
     public VenteResponseDto creerVente(VenteCreateRequest request) {
 
-        // Vérification client pour vente à crédit
+        // ===================== VALIDATION =====================
         if (request.getTypeVente() == TypeVente.CREDIT && request.getIdClient() == null) {
             throw new RuntimeException("Pour une vente à crédit, l'ID du client est obligatoire");
         }
-        // Load client entity
-        ClientEntity client = clientRepository.findById(request.getIdClient())
-        .orElseThrow(() -> new RuntimeException("Client introuvable"));
 
-        // Set the entity on the vente
+        ClientEntity client = null;
+        if (request.getIdClient() != null) {
+            client = clientRepository.findById(request.getIdClient())
+                    .orElseThrow(() -> new RuntimeException("Client introuvable"));
+        }
 
-        // Création de la vente
+        Utilisateur utilisateur = utilisateurRepository.findById(request.getIdUtilisateur())
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // ===================== CREATION VENTE =====================
         Vente vente = new Vente();
-vente.setClient(client);
+        vente.setClient(client);
         vente.setIdEntrepot(request.getIdEntrepot());
         vente.setIdUtilisateur(request.getIdUtilisateur());
         vente.setDateVente(LocalDateTime.now());
@@ -69,10 +73,10 @@ vente.setClient(client);
         vente.setTypeVente(request.getTypeVente());
         vente.setStatut(StatutVente.VALIDEE);
 
-        double total = 0;
+        double total = 0.0;
         List<LigneVente> lignes = new ArrayList<>();
 
-        // Traitement des lignes de vente et mise à jour stock
+        // ===================== TRAITEMENT LIGNES =====================
         for (LigneVenteRequest ligneReq : request.getLignes()) {
             Stock stock = stockRepository
                     .findByPieceIdPieceAndEntrepotIdEntrepot(ligneReq.getIdPiece(), request.getIdEntrepot())
@@ -87,13 +91,12 @@ vente.setClient(client);
             stock.setQuantiteActuelle(avant - ligneReq.getQuantite());
             stockRepository.save(stock);
 
-            Utilisateur utilisateur = utilisateurRepository.findById(request.getIdUtilisateur())
-                    .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
-
-            // Audit
+            // Audit stock
             creerAudit(utilisateur, stock, ActionStock.DIMINUTION, TypeMouvement.VENTE,
-                    avant, stock.getQuantiteActuelle(), vente.getEntrepot(), null, "Vente créée");
+                    avant, stock.getQuantiteActuelle(), vente.getEntrepot(), null,
+                    "Vente créée");
 
+            // Ligne vente
             LigneVente ligne = new LigneVente();
             ligne.setIdPiece(ligneReq.getIdPiece());
             ligne.setQuantite(ligneReq.getQuantite());
@@ -108,11 +111,10 @@ vente.setClient(client);
         vente.setLignes(lignes);
         vente.setTotal(total);
 
-        // Sauvegarde vente
+        // ===================== SAUVEGARDE VENTE =====================
         Vente savedVente = venteRepository.save(vente);
 
-        // Création facture
-        // Création facture
+        // ===================== CREATION FACTURE =====================
         Facture facture = factureService.creerFacturePourVente(savedVente);
         savedVente.setFacture(facture); // link in memory
 
@@ -125,22 +127,19 @@ vente.setClient(client);
             paiement.setDatePaiement(LocalDateTime.now());
             paiementService.savePaiement(paiement);
 
-            // Add paiement to facture in memory
+            // Add to facture in memory
             facture.getPaiements().add(paiement);
 
-            // Mise à jour facture
+            // Recalculer statut facture
             factureService.recalculerStatut(facture);
         }
 
-        // Now mapping will include facture, statut, and paiements
         return VenteMapper.toResponseDto(savedVente);
-
     }
 
     /* ===================== ANNULATION VENTE ===================== */
     @Transactional
     public Vente annulerVente(Long idVente, String motif) {
-
         Vente vente = venteRepository.findById(idVente)
                 .orElseThrow(() -> new RuntimeException("Vente introuvable"));
 
@@ -153,6 +152,9 @@ vente.setClient(client);
         }
 
         // Retour en stock et audit
+        Utilisateur utilisateur = utilisateurRepository.findById(vente.getIdUtilisateur())
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
         for (LigneVente ligne : vente.getLignes()) {
             Stock stock = stockRepository
                     .findByPieceIdPieceAndEntrepotIdEntrepot(ligne.getIdPiece(), vente.getIdEntrepot())
@@ -163,60 +165,29 @@ vente.setClient(client);
             stock.setQuantiteActuelle(avant + ligne.getQuantite());
             stockRepository.save(stock);
 
-            creerAudit(
-                    vente.getUtilisateur(),
-                    stock,
-                    ActionStock.AUGMENTATION,
-                    TypeMouvement.AJUSTEMENT,
-                    avant,
-                    stock.getQuantiteActuelle(),
-                    vente.getEntrepot(),
-                    null,
+            creerAudit(utilisateur, stock, ActionStock.AUGMENTATION, TypeMouvement.AJUSTEMENT,
+                    avant, stock.getQuantiteActuelle(), vente.getEntrepot(), null,
                     "Annulation vente : " + motif);
         }
 
-        // Annulation de la facture
+        // Annulation facture
         Facture facture = factureService.getFactureByVente(vente.getIdVente());
         facture.setStatutFacture(StatutFacture.ANNULEE);
         factureService.recalculerStatut(facture);
 
-        // Annulation des paiements
+        // Reset paiements
         if (facture.getPaiements() != null && !facture.getPaiements().isEmpty()) {
             facture.getPaiements().forEach(p -> p.setMontant(0.0));
         }
 
-        // Annuler la vente
         vente.setStatut(StatutVente.ANNULEE);
         return venteRepository.save(vente);
     }
 
-    /* ===================== CONSULTATION ===================== */
-    public List<Vente> getAll() {
-        return venteRepository.findAll();
-    }
-
-    public Vente getById(Long id) {
-        return venteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Vente introuvable"));
-    }
-
-    public Vente getByNumero(String numero) {
-        return venteRepository.findByNumeroVente(numero)
-                .orElseThrow(() -> new RuntimeException("Vente introuvable"));
-    }
-
     /* ===================== AUDIT HELPER ===================== */
-    private void creerAudit(
-            Utilisateur utilisateur,
-            Stock stock,
-            ActionStock action,
-            TypeMouvement typeMouvement,
-            Double avant,
-            Double apres,
-            Entrepot source,
-            Entrepot destination,
-            String commentaire) {
-
+    private void creerAudit(Utilisateur utilisateur, Stock stock, ActionStock action,
+                             TypeMouvement typeMouvement, Double avant, Double apres,
+                             Entrepot source, Entrepot destination, String commentaire) {
         StockAudit audit = new StockAudit();
         audit.setUtilisateur(utilisateur);
         audit.setStock(stock);
@@ -226,9 +197,18 @@ vente.setClient(client);
         audit.setQuantiteApres(apres);
         audit.setEntrepotSource(source);
         audit.setEntrepotDestination(destination);
-        audit.setDateAction(LocalDateTime.now());
         audit.setCommentaire(commentaire);
-
+        audit.setDateAction(LocalDateTime.now());
         stockAuditRepository.save(audit);
     }
+
+    public List<Vente> getAll() { return venteRepository.findAll(); }
+    public Vente getById(Long id) { return venteRepository.findById(id).orElseThrow(() -> new RuntimeException("Vente introuvable")); }
+    
+    public VenteResponseDto getByNumero(String numero) {
+    Vente vente = venteRepository.findByNumeroVente(numero)
+            .orElseThrow(() -> new RuntimeException("Vente introuvable : " + numero));
+
+    return VenteMapper.toResponseDto(vente);
+}
 }
